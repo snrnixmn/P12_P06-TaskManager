@@ -8,46 +8,85 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.RemoteInput;
 
 public class TaskReminderReceiver extends BroadcastReceiver {
 
     int notifReqCode = 123;
 
-	@Override
-	public void onReceive(Context context, Intent i) {
+    @Override
+    public void onReceive(Context context, Intent i) {
 
-		int id = i.getIntExtra("id", -1);
-		String name = i.getStringExtra("name");
-		String desc = i.getStringExtra("desc");
+        int notifReqCode = 123;
 
-		NotificationManager notificationManager = (NotificationManager)
-				context.getSystemService(Context.NOTIFICATION_SERVICE);
+        int id = i.getIntExtra("id", -1);
+        String name = i.getStringExtra("name");
+        String desc = i.getStringExtra("desc");
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			NotificationChannel channel = new
-					NotificationChannel("default", "Default Channel",
-					NotificationManager.IMPORTANCE_DEFAULT);
+        Task task = (Task) i.getSerializableExtra("task");
 
-			channel.setDescription("This is for default notification");
-			notificationManager.createNotificationChannel(channel);
-		}
+        NotificationManager notificationManager = (NotificationManager)
+                context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-		Intent intent = new Intent(context, MainActivity.class);
-		PendingIntent pIntent = PendingIntent.getActivity(context, notifReqCode,
-				intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new
+                    NotificationChannel("default", "Default Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT);
 
-		// build notification
-		NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "default");
-		builder.setContentTitle("Task Manager Reminder");
-		builder.setContentText(name);
-		builder.setSmallIcon(android.R.drawable.ic_dialog_info);
-		builder.setContentIntent(pIntent);
-		builder.setAutoCancel(true);
+            channel.setDescription("This is for default notification");
+            notificationManager.createNotificationChannel(channel);
+        }
 
-		Notification n = builder.build();
+        Intent intent = new Intent(context, MainActivity.class);
+        PendingIntent pIntent = PendingIntent.getActivity(context, notifReqCode,
+                intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
-		notificationManager.notify(notifReqCode, n);
-	}
+        NotificationCompat.Action action = new
+                NotificationCompat.Action.Builder(
+                R.mipmap.ic_launcher,
+                desc,
+                pIntent).build();
 
+        Intent intentreply = new Intent(context,
+                ReplyActivity.class);
+        PendingIntent pendingIntentReply = PendingIntent.getActivity
+                (context, 0, intentreply,
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+
+        RemoteInput ri = new RemoteInput.Builder("status")
+                .setLabel("Status report")
+                .setChoices(new String[]{"Completed", "Not yet"})
+                .build();
+
+        NotificationCompat.Action action2 = new
+                NotificationCompat.Action.Builder(
+                R.mipmap.ic_launcher,
+                "Reply",
+                pendingIntentReply)
+                .addRemoteInput(ri)
+                .build();
+
+
+        NotificationCompat.WearableExtender extender = new
+                NotificationCompat.WearableExtender();
+        extender.addAction(action);
+        extender.addAction(action2);
+
+
+        // build notification
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "default");
+        builder.setContentTitle("Task Manager Reminder");
+        builder.setContentText(name);
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info);
+        builder.setContentIntent(pIntent);
+        builder.setAutoCancel(true);
+
+        builder.extend(extender);
+
+        Notification n = builder.build();
+
+        notificationManager.notify(notifReqCode, n);
+    }
 }
